@@ -58,7 +58,7 @@ VMware PowerCLI 12.0.0由多个模块组成，您可以根据需要来安装和�
 
 
 
-###2.2 在PowerCLI里面选择对象
+### 2.2 在PowerCLI里面选择对象
 在PowerCLI中，可以将字符串和通配符传递给以inventory对象、数据存储、OSCustomizationSpec对象和VIServer对象作为参数的所有参数。这种PowerCLI方法被命名为“按名称对象”(OBN)选择。
 用户可以通过管道或变量传递对象，而不是将对象名称分配给cmdlet参数。例如，以下三个命令是可互换的:
 * Remove-VM -VM "Win 7 SP1"
@@ -72,7 +72,7 @@ VMware PowerCLI 12.0.0由多个模块组成，您可以根据需要来安装和�
 ```  
 如果指定的VM2虚拟机上不存在，则抛出一个不可终止的错误，并且命令仅在VM1和VM3虚拟机上执行。  
   
-###2.3 提供登录凭据
+### 2.3 提供登录凭据
 当您在命令提示符或脚本文件中提供登录凭据时，PowerShell的限制可能会阻止PowerCLI正确处理非字母数字字符。若要防止登录问题，请转义凭证中的非字母数字字符。
 要对PowerCLI中的非字母数字字符进行转义，需要将包含这些字符的表达式放在单引号(')中。
 ***注意，在“指定凭据”对话框中提供登录凭据时，不需要转义非字母数字字符。***
@@ -83,7 +83,7 @@ VMware PowerCLI 12.0.0由多个模块组成，您可以根据需要来安装和�
 Connect-VIServer -Server 10.23.112.235 -Protocol https -Username 'Adminis!ra!or' -Password 'pa$$word'
 ```  
   
-###2.4 异步运行PowerCLI cmdlet
+### 2.4 异步运行PowerCLI cmdlet
 默认情况下，PowerCLI cmdlet只在完成请求的任务后返回输出。如果您希望cmdlet立即返回到命令行，而不等待任务完成，那么可以使用RunAsync参数。
 当使用RunAsync参数时，cmdlet返回任务对象，而不是通常的输出。返回的任务对象的状态属性包含任务初始状态的快照。此状态不会自动更新，其值为Error、Queued、Running或Success。通过使用Get-Task cmdlet检索任务对象，可以刷新任务状态。如果您想观察正在运行的任务的进度，并在运行其他命令之前等待任务完成，请使用等待任务cmdlet。  
 **注意:**  
@@ -99,26 +99,26 @@ Remove-VM $vmList -RunAsync
 ```   
 该命令立即返回由一个或多个Task对象组成的输出。   
 
-###2.5 管理默认服务器连接
+### 2.5 管理默认服务器连接
 默认情况下，如果无法通过提供的参数确定目标服务器，则PowerCLI和PowerCLI cmdlet在您连接到的vCenter Server系统或vCloud Director服务器上运行。
 使用Connect-VIServer连接到vCenter Server系统时，服务器连接存储在\$DefaultVIServers数组变量中。此变量包含当前PowerCLI会话的所有连接的服务器。要从\$DefaultVIServers变量中删除服务器，可以使用Disconnect-VIServer关闭与此服务器的所有活动连接，也可以手动修改\$DefaultVIServers的值。
 使用Connect-CIServer连接到vCloud Director系统时，服务器连接存储在\$ DefaultCIServers数组变量中。此变量包含当前会话的所有连接的服务器。要从\$ DefaultCIServers变量中删除服务器，可以使用DisconnectCIServer关闭与此服务器的所有活动连接，也可以手动修改$DefaultCIServers的值。
    
-###2.6 PowerCLI中的自定义规范对象
+### 2.6 PowerCLI中的自定义规范对象
 PowerCLI提供两种类型的对象用于自定义规范：持久对象和非持久对象。
 ####持久定制
 持久性自定义规范对象存储在vSphere服务器上。 使用vSphere Client或VMware PowerCLI 4.1或更高版本创建的所有持久性自定义规范均已加密。 加密的自定义规范只能由已对其进行加密的服务器应用。
 ####非持久定制
 非持久性自定义规范对象仅在当前PowerShell进程内部存在。 非持久性自定义规范对象未加密，但将其克隆到vSphere服务器中将对其进行加密。
    
-###2.7 将ESXCLI与PowerCLI一起使用
+### 2.7 将ESXCLI与PowerCLI一起使用
 PowerCLI使您能够通过其控制台使用ESXCLI。
 PowerCLI提供了两种使用ESXCLI的方法：
 * 通过Get-ESXCli cmdlet，可直接访问ESXCLI命名空间，应用程序和命令。
 * 通过.NET方法，用于创建与特定ESXCLI应用程序相对应的托管对象。 要访问ESXCLI，可以在这些托管对象上调用方法。
 > 注意：要调用ESXCLI对象的方法，必须为所有参数提供值。 如果要省略给定的参数，请传递$ null作为其参数。
   
-###2.8 PowerCLI的关于文章
+### 2.8 PowerCLI的关于文章
 您可以从名为about的内置帮助文章中了解有关PowerCLI概念和功能的更多信息。 您可以通过运行的PowerCLI进程访问它们。
 运行help About_ *会列出有关文章的所有内置PowerShell和VMware PowerCLI。
 |文章题目|命令|文章描述|
@@ -178,7 +178,7 @@ C:\Program Files\WindowsPowerShell\Modules     (需要管理员权限并且所�
 %UserProfile%\Documents\WindowsPowerShell\Modules   (仅当前用户生效)
 ```
 
-####3.2.2 Linux下
+#### 3.2.2 Linux下
 将下载的PowerCLI模块包解压到系统的如下位置:   
 ``` 
 # MAC OS 和Linux OS一样
@@ -187,8 +187,8 @@ C:\Program Files\WindowsPowerShell\Modules     (需要管理员权限并且所�
 
 ```
 
-##4. PowerCLI配置更新卸载
-###4.1 设置Powershell的执行策略为不受限制
+## 4. PowerCLI配置更新卸载
+### 4.1 设置Powershell的执行策略为不受限制
 如果Powershell是运行在windows 平台上,则需要运行如下命令来设置PS脚本执行策略.(Mac 和Linux OS不需要此操作)   
 ```
 Set-ExecutionPolicy unrestricted
@@ -196,7 +196,7 @@ Set-ExecutionPolicy unrestricted
 Set-ExecutionPolicy RemoteSigned
 ```
 
-###4.2 消除证书错误以及验证安装是否成功
+### 4.2 消除证书错误以及验证安装是否成功
 在打开的powershell中输入如下命令来消除证书的错误;当然更安全的办法是让powershell信任vcenter或者Esxi的证书,但是实际情况是,由于信任证书操作需要额外的时间,我们一般忽略这个错误直接连接vCenter或者Esxi开始工作.(如果有人对信任证书有兴趣)
 ```
 Set-PowerCLIConfiguration -InvalidCertificateAction Ignore
@@ -204,7 +204,7 @@ Set-PowerCLIConfiguration -InvalidCertificateAction Ignore
 这条命令如果可以执行成功,则表示powercli以及安装成功,下面就可以正常使用了.
 
 
-###4.3 更新PowerCLI模块
+### 4.3 更新PowerCLI模块
 当模块的新版本可用时，您可以更新PowerCLI模块。
 如果使用Update-Module，则不会删除该模块的现有版本。 要更新模块，应首先卸载模块的现有版本，然后再安装新版本。
 程序
@@ -218,7 +218,7 @@ Get-Module VMware.Module_Name | Uninstall-Module -Force
 Install-Module VMware.Module_Name
 ```
 
-###4.4 卸载PowerCLI
+### 4.4 卸载PowerCLI
 您可以通过运行PowerShell命令来卸载PowerCLI。 您可以卸载所有正式模块，也可以分别卸载模块。
 ####先决条件
 n确认您已关闭所有正在运行PowerCLI模块的PowerShell会话。
