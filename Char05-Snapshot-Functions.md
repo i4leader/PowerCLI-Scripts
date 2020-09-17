@@ -15,6 +15,10 @@ Get-VM app01a | New-Snapshot -Name "HOL" -Description "HOL Snapshot" -Quiesce -M
 ```
 Get-VM | Get-Snapshot
 ```
+或者
+```
+Get-VM | Sort Name | Get-Snapshot | Select VM,Name,Description,Created
+```
 显示结果:
 ![创建快照](images/c3/get-vm-snapshot.png)
 如果你需要看到详细的快照信息,可以在上面的命令基础上加上一些参数:
