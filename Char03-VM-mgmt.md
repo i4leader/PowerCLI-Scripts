@@ -23,11 +23,107 @@ Stop-VM -VM VM -Confirm -RunAsync
 Restart-VM -VM VM -RunAsync -Confirm
 ```
 
+批量开启虚拟机电源
+```
+Get-VM Ubuntu-VM* | Start-VM -Confirm:$false -RunAsync
+```
+注意: ***-confirm:$false*** 命令表示不需要人工干预确认; ***-RunAsync*** 表示命令会同步执行,而不是一条条执行
+![](images/c3/start-vm.png)
+
+
 ## 迁移虚拟机
+### 1.迁移虚拟机到不同的主机
+```
+ Get-VM -Name Ubuntu-VM1 | Move-VM -Destination 10.186.67.146
+```
+![](images/c3/Move-VM.png)
+
+### 2.迁移虚拟机到不同的存储
+```
+ Get-VM -Name Ubuntu-VM1 | Move-VM -Datastore "local-0 (2)" 
+```
+![](images/c3/Move-VM-datastore.png)
+
+### 3.迁移虚拟机到文件夹
+```
+
+```
 
 ## 批量从模板创建虚拟机
+### 1. 获取模板
+```
+get-template
+```
+![](images/c3/get-template.png)
+
+### 2. 打开集群HA和DRS
+```
+Set-Cluster -Cluster VSAN-Cluster -HAEnabled $True -DrsEnabled $True
+```
+![](images/c3/enablehadrs.png)
+
+### 3. 从模板创建虚拟机
+脚本如下:
+```
+# 定义存储以及定义部署的主机
+$DS = Get-Datastore -Name vsan*
+$esxihost = Get-Cluster | Get-VMhost
+
+# 指定虚拟机数量
+$i = 1
+while ($i -le 5){
+$i
+
+# 创建虚拟机并指定虚拟机名称和模板,还能指定CPU和内存,磁盘格式
+$VM = New-VM -Name “Ubuntu-VM$i” -Template “U-Temp” -Datastore $DS -DiskStorageFormat Thin -VMHost ($esxihost | Get-Random) | Set-VM -NumCpu 2 -MemoryGB 4 -Confirm:$false
+$i++
+}
+```
+![](images/c3/create-vm-from-teemplate.png)
+接着使用 ***Get-VM*** 命令可以看到所有的虚拟机都创建好了.
+![](images/c3/get-vm.png)
+
 
 ## 批量更改虚拟机设置
+### 1. 查看虚拟机高级设置
+```
+Get-VM -Name Ubuntu-VM1 | Get-AdvancedSetting
+```
+![](images/c3/Get-AdvancedSetting.png)
+
+### 2. 定义虚拟机列表
+```
+$VMs = Get-VM -Name Ubuntu-VM*
+```
+
+### 3. 定义循环
+```
+foreach ($vm in $VMs)
+```
+
+### 4. 定义具体设置的高级参数
+```
+{
+   Get-VM -Name $vm | Get-AdvancedSetting  -Name tools.guest.desktop.autolock | Set-AdvancedSetting -value $TRUE
+}
+```
+注意:设置的值必须为大写的TRUE或者FALSE.如果是小写是不生效的.
+
+### 5.以上脚本整合在一起就可以做批量的虚拟机高级设置的修改了
+```
+$VMs = Get-VM -Name Ubuntu-VM*
+foreach ($vm in $VMs)
+{
+   Get-VM -Name $vm | Get-AdvancedSetting  -Name tools.guest.desktop.autolock | Set-AdvancedSetting -value $TRUE -Confirm:$FALSE
+} 
+```
+![](images/c3/set-advancedsetting.png)
+
+### 6.最后使用命令查看刚才的虚拟机高级项
+```
+Get-VM -Name Ubuntu-VM* | Get-AdvancedSetting -Name tools.guest.desktop.autolock
+```
+![](images/c3/get-vm-advancedsetting.png)
 
 ## 查看虚拟机详细信息
 此命令将为您提供有关VM的详细信息，例如名称，CPU数量，操作系统，Service Pack级别

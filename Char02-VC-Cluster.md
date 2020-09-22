@@ -18,21 +18,21 @@ Set-PowerCLIConfiguration -ProxyPolicy NoProxy
 
 
 ## 2. 创建数据中心
-创建名称为MyFirstDatacenter的数据中心.
+创建名称为Beijing-DC的数据中心.
 -location -Name 是必须要使用的参数.
 ```   
-New-Datacenter -location -Name MyFirstDatacenter
+New-Datacenter -location -Name Beijing-DC
 ```  
 
 ## 3. 创建集群
-在NJ-Datacenter中创建名字为Cluster001的集群.
+在Beijing-DC中创建名字为Cluster001的集群.
 ```
-New-Cluster –Name Cluster001 –Location “NJ-Datacenter”
+New-Cluster –Name Cluster001 –Location “Beijing-DC”
 ```
 
-在Primary数据中心中创建名称为ClusterA的集群,顺带把集群HA和DRS也开了
+在Beijing-DC数据中心中创建名称为ClusterA的集群,顺带把集群HA和DRS也开了
 ```
-New-Cluster -Location (Get-Datacenter -Name "Primary") -Name ClusterA -HAEnabled -DRSEnabled -DRSAutomationLevel FullyAutomated
+New-Cluster -Location (Get-Datacenter -Name "Beijing-DC") -Name ClusterA -HAEnabled -DRSEnabled -DRSAutomationLevel FullyAutomated
 ```   
 
 ## 4. 添加主机到集群中
@@ -42,7 +42,7 @@ Get-VMHost
 ```
 添加主机的命令
 ```
-Add-VMHost -Name Host -Location (Get-Datacenter DC) -User root -Password pass
+Add-VMHost -Name Host -Location (Get-Datacenter Beijing-DC) -User root -Password pass
 ```
 
 
@@ -62,9 +62,9 @@ Set-Cluster –Name “ClusterC” –HAEnabled:$false – DRSEnabled:$false –
 ```
 
 ### 5.2 设置HA的高级功能AdmissionControl,HAFailoverLevel
-接下来，您可能想要更改群集上HA的AdmissionControl和故障转移级别设置。同样，您转到Set-Cluster cmdlet进行这些设置更改。 -HAAdmissionControlEnabled参数控制是否打开“准入控制”。 -HAFailoverLevel参数设置为1到4之间的数字，指定您希望集群能够承受多少主机故障。您将以身作则，以度过一次主机故障的麻烦：
+接下来，您可能想要更改群集上HA的AdmissionControl和故障转移级别设置。同样，您转到Set-Cluster cmdlet进行这些设置的更改。 -HAAdmissionControlEnabled参数控制是否打开“准入控制”。 -HAFailoverLevel参数设置为1到4之间的数字，指定您希望集群能够承受多少主机故障。
 ```
-Set-Cluster -Cluster “ClusterA” -HAadmissionControlEnabled $true-HAFailoverLevel 1
+Set-Cluster -Cluster “ClusterA” -HAadmissionControlEnabled $true -HAFailoverLevel 1
 ```
 
 ### 5.3 设置HA高级功能IsolationResponse,RestartPriority
@@ -78,7 +78,7 @@ Set-Cluster “ClusterA” -HAIsolationResponse shutdown -HaRestartPriority
 ### 5.4 设置集群DrsAutomationLevel
 它也通常在群集上更改DRS模式。Todothis，您可以再次使用Set-Cluster cmdlet，但是您将使用-DrsAutomationLevel参数设置模式：
 ```
-Set-Cluster -Cluster“ ClusterA” -DrsAutomationLevel手册-确认：$false
+Set-Cluster -Cluster “ClusterA” -DrsAutomationLevel Manual -Confirm：$false
 ```
 
 更常见的是，您可能希望将DRS模式设置为全自动：
@@ -108,3 +108,5 @@ Set-Cluster -Cluster “ClusterB” -EVCMode 'intel-ivybridge'
 ```
 Remove-Cluster -Name "ClusterC" –Confirm:$false
 ```
+
+

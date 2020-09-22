@@ -191,9 +191,11 @@ C:\Program Files\WindowsPowerShell\Modules     (需要管理员权限并且所�
 ### 4.1 设置Powershell的执行策略为不受限制
 如果Powershell是运行在windows 平台上,则需要运行如下命令来设置PS脚本执行策略.(Mac 和Linux OS不需要此操作)   
 ```
-Set-ExecutionPolicy unrestricted
+Set-ExecutionPolicy unrestricted  #全局设置
 或者
-Set-ExecutionPolicy RemoteSigned
+Set-ExecutionPolicy -Scope CurrentUser unrestricted  #仅当前用户
+或者
+Set-ExecutionPolicy RemoteSigned  #全局设置
 ```
 
 ### 4.2 消除证书错误以及验证安装是否成功
