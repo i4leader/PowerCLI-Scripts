@@ -21,7 +21,8 @@ Set-PowerCLIConfiguration -ProxyPolicy NoProxy
 创建名称为Beijing-DC的数据中心.
 -location -Name 是必须要使用的参数.
 ```   
-New-Datacenter -location -Name Beijing-DC
+$location = Get-Folder -NoRecursion
+New-Datacenter -Location $location -Name Beijing-DC
 ```  
 
 ## 3. 创建集群
@@ -40,11 +41,30 @@ New-Cluster -Location (Get-Datacenter -Name "Beijing-DC") -Name ClusterA -HAEnab
 ```
 Get-VMHost
 ```
-添加主机的命令
+### 方法一：添加主机
+最简单的添加单台主机的办法，可以是主机名或者IP地址；
 ```
 Add-VMHost -Name Host -Location (Get-Datacenter Beijing-DC) -User root -Password pass
 ```
 
+### 方法二：基于ip地址范围添加
+您还可以基于其IP地址范围添加主机。 由于要使用主机名而不是IP地址来管理vCenter中的主机，因此必须进行反向查找以获取DNS名称。 此代码段将10个IP地址范围为192.168.0.10-192.168.10.20的主机（其主机名）添加到vCenter中的Beijing-DC数据中心中。
+```
+10..20 | ForEach-Object { [System.Net.Dns]::GetHostbyAddress("192.168.0.$_")  } | 
+select-object HostName | ForEach-Object { Add-VMHost $_.HostName -Location (Get-Datacenter -Name "Beijing-DC") -User root -Password <Password> -RunAsync -force:$true }
+```
+
+### 方法三：基于主机名番位添加主机
+通过主机名范围将多个主机添加到vCenter，此解决方案需要一致的主机名。 该代码段将20个名为esx1.vlab.local-esx20.vlab.local的主机添加到vCenter中的Beijing-DC数据中心中。
+```
+1..20 | Foreach-Object { Add-VMHost esx$_.vlab.local -Location (Get-Datacenter Beijing-DC) -User root -Password <Password> -RunAsync -force:$true}
+```
+
+### 方法四：通过输入文本文件将多个主机添加到vCenter
+您可以使用文本文件将多个ESX主机添加到vCenter中。 如果您没有一致的IP地址或主机名，这可能会很有用。 只需创建一个文本文件，每行一个主机即可：
+```
+Get-Content hosts.txt | Foreach-Object { Add-VMHost $_ -Location (Get-Datacenter -Name "Beijing-DC") -User root -Password <Password> -RunAsync -force:$true}
+```
 
 ## 5. 配置集群
 为了设置群集的高级功能（包括HA，DRS和EVC），即配置群集的高可用和动态资源平衡功能，请执行以下步骤：
@@ -89,7 +109,7 @@ Set-Cluster -Cluster “ClusterA” -DrsAutomationLevel FullyAutomated -Confirm:
 ### 5.5 设置集群亲和规则
 接下来，在此示例中，您将通过定义DRS规则来确保我们的域控制器不在同一ESXi节点上运行。首先，您需要检索一个Get-VM cmdlet的域控制器VM的列表。 New-DrsRule cmdlet允许您创建KeepTogether或Separate规则。语法非常简单。您需要为我们的规则指定一个名称，一个集群，无论这是否是KeepTogether规则，最后要指定一个变量传递哪些VM：
 ```
-$domaincontrollers = Get-VM-Name “DC*”
+$domaincontrollers = Get-VM -Name “DC*”
 New-DrsRule -Name “Single DC” -Cluster “ClusterA” -enable $true -KeepTogether $false -VM $domaincontrollers
 ```
 
@@ -106,7 +126,7 @@ Set-Cluster -Cluster “ClusterB” -EVCMode 'intel-ivybridge'
 
 ## 删除集群
 ```
-Remove-Cluster -Name "ClusterC" –Confirm:$false
+Get-Cluster -Name "ClusterA" | Remove-Cluster  –Confirm:$False
 ```
 
 
