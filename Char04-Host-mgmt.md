@@ -6,8 +6,15 @@
 您可以使用Set-VMHost cmdlet的LicenseKey参数为vCenter Server系统上的主机设置许可证密钥。
 ```
 $vmhost = Get-VMHost -Name Host
-Set-VMHost -VMHost $vmhost -LicenseKey 00000-00000-00000-00000-00000
+Set-VMHost -VMHost $vmhost -LicenseKey your-license-key
 ```
+
+## 批量给主机分配许可
+```
+$vmhosts = Get-VMhost 
+foreach ($vmhost in $vmhosts) {Set-VMHost -VMHost $vmhost -LicenseKey Your_license_key -Confirm:$False} 
+```
+
 
 ## 查看Esxi主机
 ```

@@ -5,29 +5,29 @@
 Get-VM -Name VM
 Get-VM -Name "My VM"
 ```   
-如果虚拟机的名称重点有空格,那必须在虚拟机的名称前后加上双引号.
+* 注意:如果虚拟机的名称重点有空格,那必须在虚拟机的名称前后加上双引号.
 
 ## 虚拟机开关机
 虚拟机开机
 ```
-Start-VM -VM VM -Confirm -RunAsync
+Start-VM -VM VM -Confirm:$False -RunAsync
 ```
 
 虚拟机关机
 ```
-Stop-VM -VM VM -Confirm -RunAsync
+Stop-VM -VM VM -Confirm:$false -RunAsync
 ```
 
 虚拟机重启
 ```
-Restart-VM -VM VM -RunAsync -Confirm
+Restart-VM -VM VM -RunAsync -Confirm:$false
 ```
 
 批量开启虚拟机电源
 ```
 Get-VM Ubuntu-VM* | Start-VM -Confirm:$false -RunAsync
 ```
-注意: ***-confirm:$false*** 命令表示不需要人工干预确认; ***-RunAsync*** 表示命令会同步执行,而不是一条条执行
+注意: ***-confirm:$false*** 命令表示不需要人工干预确认; ***-RunAsync*** 表示命令会同步执行多个开机任务
 ![](images/c3/start-vm.png)
 
 
@@ -45,12 +45,26 @@ Get-VM Ubuntu-VM* | Start-VM -Confirm:$false -RunAsync
 ![](images/c3/Move-VM-datastore.png)
 
 ### 3.迁移虚拟机到文件夹
+* 首先创建一个虚拟机文件夹
 ```
+$dc =  Get-Datacenter -Name vSAN-DC
+$vmFolder = Get-View -id $dc.ExtensionData.VmFolder
+$vmFolder.CreateFolder("UbuntuTestFolder")
+```
+![](Images/c3/CreateVMFolder.png)
 
+* 迁移虚拟机到文件夹
 ```
+$vmobject = Get-VM -Name Ubuntu*
+Move-VM -VM $vmObject -InventoryLocation  (($vmObject | Get-Datacenter) | Get-Folder -Name "UbuntuTestFolder")
+```
+![](images/c3/move-vm-folder.png)
+
+#### 参数说明:
+* -InventoryLocation 在PowerCLI 6.3版本之前版本虚拟机迁移到文件夹可以使用-Folder参数，在该版本之后就改成了-InventoryLocation
 
 ## 批量从模板创建虚拟机
-### 1. 获取模板
+### 1. 获取vCenter上所有虚拟机模板
 ```
 get-template
 ```
@@ -71,11 +85,11 @@ $esxihost = Get-Cluster | Get-VMhost
 
 # 指定虚拟机数量
 $i = 1
-while ($i -le 5){
+while ($i -le 5)
+{
 $i
-
-# 创建虚拟机并指定虚拟机名称和模板,还能指定CPU和内存,磁盘格式
-$VM = New-VM -Name “Ubuntu-VM$i” -Template “U-Temp” -Datastore $DS -DiskStorageFormat Thin -VMHost ($esxihost | Get-Random) | Set-VM -NumCpu 2 -MemoryGB 4 -Confirm:$false
+# 创建虚拟机并指定虚拟机名称和模板,还能指定CPU和内存,磁盘格式，以及网络
+$VM = New-VM -Name "Ubuntu-VM$i” -Template "U-Temp” -Datastore $DS -DiskStorageFormat Thin -NetworkName "VM Network” -VMHost ($esxihost | Get-Random) | Set-VM -NumCpu 2 -MemoryGB 4 -Confirm:$false
 $i++
 }
 ```
@@ -83,6 +97,8 @@ $i++
 接着使用 ***Get-VM*** 命令可以看到所有的虚拟机都创建好了.
 ![](images/c3/get-vm.png)
 
+#### 参数说明：
+* -DiskStorageFormat 该参数可以指定设置磁盘的置备方式，主要有三种，Thin，Thick， EagerZeroedThick
 
 ## 批量更改虚拟机设置
 ### 1. 查看虚拟机高级设置
@@ -119,17 +135,22 @@ foreach ($vm in $VMs)
 ```
 ![](images/c3/set-advancedsetting.png)
 
-### 6.最后使用命令查看刚才的虚拟机高级项
+### 6.最后使用命令查看刚才的虚拟机高级选项
 ```
 Get-VM -Name Ubuntu-VM* | Get-AdvancedSetting -Name tools.guest.desktop.autolock
 ```
 ![](images/c3/get-vm-advancedsetting.png)
 
+# 实用命令
 ## 查看虚拟机详细信息
-此命令将为您提供有关VM的详细信息，例如名称，CPU数量，操作系统，Service Pack级别
+此命令将为您提供有关VM的详细信息，例如名称，电源状态，CPU数量，已分配内存，已分配磁盘空间，硬件版本，文件夹，所在Esxi主机
 ```
-Get-VM |Where {$_.PowerState -eq “PoweredOn“} |Sort Name |Select Name, NumCPU, @{N=“OSHAL“;E={(Get-WmiObject -ComputerName $_.Name-Query “SELECT * FROM Win32_PnPEntity where ClassGuid = ‘{4D36E966-E325-11CE-BFC1-08002BE10318}’“ |Select Name).Name}}, @{N=“OperatingSystem“;E={(Get-WmiObject -ComputerName $_ -Class Win32_OperatingSystem |Select Caption).Caption}}, @{N=“ServicePack“;E={(Get-WmiObject -ComputerName $_ -Class Win32_OperatingSystem |Select CSDVersion).CSDVersion}}
+Get-VM | Select-Object Name, PowerState, Guest, NumCpu, MemoryGb, ProvisionedSpaceGB, HardwareVersion, Folder,VMHost | ft
 ```
+![](images/c3/Get-VM-details.png)
+#### 参数说明：
+* Format-Table 可简写成ft，用来做表格状格式来输出
+* 如果要看虚拟机的所有对象,可以使用 Select-Object * 先输出所有对象,再进行关键内容筛选
 
 ### 查看所有带有SCSI Bus Sharing磁盘的虚拟机
 ```
@@ -137,52 +158,59 @@ Get-VM |Where {$_.PowerState -eq “PoweredOn“} |Sort Name |Select Name, NumCP
 $array = @()
 
 # 变量$vm存放集群中所有虚拟机
-$vms = get-cluster “ClusterName” | get-vm
+$vms = get-cluster "ClusterName" | get-vm
 #循环来找存在BusSharing模式的磁盘Loop for BusSharingMode
 foreach ($vm in $vms)
    {
    # 找出Physical 磁盘或者BusSharingMode的磁盘
-   $disks = $vm | Get-ScsiController | Where-Object {$_.BusSharingMode -eq ‘Physical’ -or $_.BusSharingMode -eq ‘Virtual’}
-   #循环来将找到的每个Physical磁盘以及bus sharing磁盘以及其虚拟机信息等,写入数组
+   $disks = $vm | Get-ScsiController | Where-Object {$_.BusSharingMode -eq 'Physical' -or $_.BusSharingMode -eq 'Virtual'}
+   #循环来将找到的每个Physical,Virtual的bus sharing磁盘以及其虚拟机信息等,写入数组
    foreach ($disk in $disks)
       {
       $REPORT = New-Object -TypeName PSObject
       $REPORT | Add-Member -type NoteProperty -name Name -Value $vm.Name
-      $REPORT | Add-Member -type NoteProperty -name VMHost -Value $vm.Host
+      $REPORT | Add-Member -type NoteProperty -name VMHost -Value $vm.VMHost
       $REPORT | Add-Member -type NoteProperty -name Mode -Value $disk.BusSharingMode
-      $REPORT | Add-Member -type NoteProperty -name Type -Value “BusSharing”
+      $REPORT | Add-Member -type NoteProperty -name Type -Value "BusSharing"
       $array += $REPORT
       }
 }
 #显示数组中的内容
 $array
 ```
+![](images/c3/bus-sharing.png)
+
+#### 参数说明:
+* @() 表示新建了一个空的数组
+* New-Object 表示新建一个对象
+* Add-Member 对这个对象新增属性
+* $array += $REPORT 表示向数组中新增一条对象
 
 ### 查看所有带了USB外设的虚拟机
 
 ```
-Get-View -ViewType VirtualMachine -Property Name,'Config.Hardware' | Where-Object { $_.Config.Hardware.Device.Where({$_.gettype().name -match 'VirtualUSBController'}) } | Select-Object -ExpandProperty Name
+Get-VM | Get-USBDevice
 ```
 
 ### 查看所有RDM虚拟机
 ```
-Get-VM | Get-HardDisk | Where-Object {$_.DiskType -like “Raw*”} | Select @{N=”VMName”;E={$_.Parent}},Name,DiskType,@{N=”LUN_ID”;E={$_.ScsiCanonicalName}},@{N=”VML_ID”;E={$_.DeviceName}},Filename,CapacityGB
+Get-VM | Get-HardDisk | Where-Object {$_.DiskType -like "Raw*"} | Select @{N=”VMName”;E={$_.Parent}},Name,DiskType,@{N=”LUN_ID”;E={$_.ScsiCanonicalName}},@{N=”VML_ID”;E={$_.DeviceName}},Filename,CapacityGB
 ```
 
 ### 查看所有Multi-Writer虚拟机
 ```
 #创建数组
 $array = @()
-$vms = get-cluster “ClusterName” | get-vm
+$vms = get-cluster "ClusterName” | get-vm
 foreach ($vm in $vms)
    {
-   $disks = get-advancedsetting -Entity $vm | ? { $_.Value -like “*multi-writer*”  }
+   $disks = get-advancedsetting -Entity $vm | ? { $_.Value -like "*multi-writer*”  }
       foreach ($disk in $disks){
       $REPORT = New-Object -TypeName PSObject
       $REPORT | Add-Member -type NoteProperty -name Name -Value $vm.Name
-      $REPORT | Add-Member -type NoteProperty -name VMHost -Value $vm.Host
+      $REPORT | Add-Member -type NoteProperty -name VMHost -Value $vm.VMHost
       $REPORT | Add-Member -type NoteProperty -name Mode -Value $disk.Name
-      $REPORT | Add-Member -type NoteProperty -name Type -Value “MultiWriter”
+      $REPORT | Add-Member -type NoteProperty -name Type -Value "MultiWriter"
       $array += $REPORT
       }
    }
@@ -261,12 +289,13 @@ ForEach ($target in $targets) {
 ### 方法一
 1. 查看所有连接了CDROM的虚拟机
 ```
-Get-VM | Where-Object {$_.PowerState –eq “PoweredOn”} | Get-CDDrive | FT Parent, IsoPath
+Get-VM | Where-Object {$_.PowerState –eq "PoweredOn”} | Get-CDDrive | FT Parent, IsoPath
 ```
+![](images/c3/check-iso.png)
 
 2. 设置所有CD-ROM为空
 ```
-Get-VM | Where-Object {$_.PowerState –eq “PoweredOn”} | Get-CDDrive | Set-CDDrive -NoMedia -Confirm:$False
+Get-VM | Where-Object {$_.PowerState –eq "PoweredOn"} | Get-CDDrive | Set-CDDrive -NoMedia -Confirm:$False
 ```
 
 ### 方法二
@@ -274,6 +303,7 @@ Get-VM | Where-Object {$_.PowerState –eq “PoweredOn”} | Get-CDDrive | Set-
 ```
 Get-VM | where {($_ | Get-CDDrive).ISOPath -ne $null}  |FT Name, @{Label="ISO file"; Expression = { ($_ | Get-CDDrive).ISOPath }}
 ```
+![](images/c3/check-iso-2.png)
 
 2. 设置所有CD-ROM连接状态为断开
 ```
@@ -282,19 +312,25 @@ Get-VM | Get-CDDrive | Where {$_.ConnectionState.Connected} | Set-CDDrive -Conne
 
 **注意:对于某些正在使用CDROM内文件的虚拟机,运行该命令会报错**
 
-## 查看新创建的虚拟机
+## 查看新创建的虚拟机(包括模板部署的虚拟机以及克隆的虚拟机)
 ```
-Get-VIEvent -maxsamples 10000 | Where {$_.Gettype().Name -eq “VmCreatedEvent”} | Select createdTime, UserName, FullFormattedMessage
+Get-VIEvent -maxsamples 10000 | Where {($_.FullFormattedMessage -like "*from template*") -or ($_.FullFormattedMessage -like "Created virtual machine*") -or ($_.FullFormattedMessage -like "Cloning*")} | Select createdTime, UserName, FullFormattedMessage
 ```
+![](images/c3/get-vm-new-generated.png)
+#### 参数说明:
+* -maxsamples 获取的事件的最大数量
+* -or powershell 逻辑运算符表示或者
+* where 表示筛选事件的条件,和where-object用法一样
 
 ## 查看刚删除的虚拟机
 ```
-Get-VIEvent -maxsamples 10000 | Where {$_.Gettype().Name -eq “VmRemovedEvent”} | Select createdTime, UserName, FullFormattedMessage
+Get-VIEvent -maxsamples 10000 | Where {$_.Gettype().Name -eq "VmRemovedEvent"} | Select createdTime, UserName, FullFormattedMessage
 ```
+![](images/c3/get-deleted-vm.png)
 
 ## 查看无效的不可访问的虚拟机
 ```
-Get-View -ViewType VirtualMachine | Where {-not $_.Config.Template} | Where{$_.Runtime.ConnectionState -eq “invalid” -or $_.Runtime.ConnectionState -eq “inaccessible”} | Select Name
+Get-View -ViewType VirtualMachine | Where {-not $_.Config.Template} | Where{$_.Runtime.ConnectionState -eq "invalid” -or $_.Runtime.ConnectionState -eq "inaccessible”} | Select Name
 ```
 
 ## 列出上个礼拜vCenter上的error告警
@@ -305,7 +341,7 @@ Get-VIEvent -maxsamples 10000 -Type Error -Start $date.AddDays(-7) | Select crea
 
 ## 查看所有没有安装VMware Tools的虚拟机
 ```
-Get-View -ViewType “VirtualMachine” -Property Guest,name -filter @{“Guest.ToolsStatus”=”toolsNotInstalled”;”Guest.GuestState”=”running”} | Select Name
+Get-View -ViewType "VirtualMachine” -Property Guest,name -filter @{"Guest.ToolsStatus”=”toolsNotInstalled”;”Guest.GuestState”=”running”} | Select Name
 ```
 
 ## 列出所有设置了内存预留的虚拟机
