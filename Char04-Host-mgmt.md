@@ -230,6 +230,10 @@ $ntptwo = "ntp02.example.com"
 $iSCSI_Target = "10.0.0.1","10.0.0.2","10.0.0.3"
 $VMHosts = Get-Datacenter Beijing-DC | Get-Cluster -Name ClusterA | Get-VMhost
 $License = "XXXX-XXXX-XXXX-XXXX"
+$vMotion_Net="10.10.10."
+$vMotion_StartIP=200
+$vMotion_NetMask="255.255.255.0"
+$private:vMotion_StartIP
 $iSCSI01_Net="192.168.101."
 $iSCSI01_StartIP=1
 $private:iSCSI01_StartIP
@@ -237,6 +241,7 @@ $iSCSI02_Net="192.168.101."
 $iSCSI02_StartIP=101
 $private:iSCSI02_StartIP
 $iSCSI_NetMask="255.255.255.0"
+$vMotion_vLAN = 1009
 $iSCSI01_vLAN = 1010
 $iSCSI02_vLAN = 1010
 
@@ -252,6 +257,7 @@ Connect-VIServer vcentre.localdomain.local -User $VIUser -Password $VIPassword
 foreach ($vmhost in $VMHosts) {
     $iSCSI01_IP=$iSCSI01_Net+$iSCSI01_StartIP
     $iSCSI02_IP=$iSCSI02_Net+$iSCSI02_StartIP
+    $vMotion_IP=$vMotion_Net+$vMotion_StartIP
     
     # 安装主机许可
     Set-VMHost -VMHost $vmhost -LicenseKey $License -Confirm:$False
@@ -277,8 +283,9 @@ foreach ($vmhost in $VMHosts) {
     # 新建业务使用的标准交换机,开启 Jumbo Frame
     New-VirtualSwitch -Name vSwitch1 -Nic vmnic4,vmnic5 -Mtu 9000 -Confirm:$false
 
-    # 新建 vMotion 网络
-    New-VMHostNetworkAdapter -PortGroup vMotion -VirtualSwitch vSwitch0
+    # 新建并启用vMotion 网络
+    New-VMHostNetworkAdapter -PortGroup vMotion -VirtualSwitch vSwitch0 -IP $vMotion_IP -SubnetMask $vMotion_NetMask -vlanid $vMotion_vLAN -Mtu 9000 
+    $vMotion_StartIP += 1
     Get-VMHostNetworkAdapter -Name vmk1  |Set-VMHostNetworkAdapter -VMotionEnabled $true
     
     # 批量创建存储使用的网络端口组
@@ -331,7 +338,7 @@ foreach ($vmhost in $VMHosts) {
     Get-VMHostStorage  -RescanAllHba
     Get-VMHostStorage  -RescanVmfs
 }
-```
+
 ### 创建业务使用的网络端口组
 foreach($vmhost in $vmhosts)
 {
@@ -343,9 +350,11 @@ foreach($vmhost in $vmhosts)
      Get-VMHost -name $VMhost | Get-VirtualSwitch -name vSwitch2 | New-VirtualPortGroup -name Storage-ISCSI -VLanId 16
      Get-VMHost -name $VMhost | Get-VirtualSwitch -name vSwitch2 | New-VirtualPortGroup -name DB-A -VLanId 5
 }
+```
 
 # 结语
-由于主机管理的内容较多,我们本篇文章先到这里,本章我们过了一遍新建集群标准交换机的配置; 下一章会讲分布式交换机的配置
+由于主机管理的内容较多,我们本篇文章先到这里,本章我们过了一遍新建集群标准交换机的配置; 下一章会讲分布式交换机的配置,以及常用的主机管理命令还有主机配置文件的管理以及使用.
+
 
 # 第四章: PowerCLI 管理 Esxi主机配置-第二部分
 *** 
@@ -363,12 +372,22 @@ foreach($vmhost in $vmhosts)
 Get-VMhost
 ```
 
-## 获取主机 Iscsi IQN
+## 获取主机 Iscsi HBA卡的 IQN
 ```
 Get-Cluster -name ClusterA | Get-VMHost | Get-VMHostHba -type iscsi | Select VMhost, IScsiName
 ```
 ![](images/c4/get-vmhost-iscsi.png)
 
+## 获取主机光纤存储的 WWPN 号码
+```
+$VMHosts = Get-VMHost
+Foreach ($vmhost in $VMHosts){
+$hbas = Get-VMHostHba -type FibreChannel
+foreach ($hba in $hbas){
+$wwpn = $hba.PortWorldWideName
+Write-Host $hba.Device, "|" $hba.Model, "|" "WWPN:"$wwpn
+}}
+```
 
 ## 列出所有主机的时间
 ```
@@ -453,6 +472,9 @@ Get-View -ViewType HostSystem | Sort Name | Select Name,@{N="BIOS version";E={$_
 ```
 get-vmhost | Get-VMHostAdvancedConfiguration -Name Syslog.global.logHost
 ```
+
+
+
 
 
 # 主机配置文件管理

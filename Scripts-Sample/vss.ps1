@@ -9,6 +9,10 @@ $ntptwo = "ntp02.example.com"
 $iSCSI_Target = "10.0.0.1","10.0.0.2","10.0.0.3"
 $VMHosts = Get-Datacenter Beijing-DC | Get-Cluster -Name ClusterA | Get-VMhost
 $License = "XXXX-XXXX-XXXX-XXXX"
+$vMotion_Net="10.10.10."
+$vMotion_StartIP=200
+$vMotion_NetMask="255.255.255.0"
+$private:vMotion_StartIP
 $iSCSI01_Net="192.168.101."
 $iSCSI01_StartIP=1
 $private:iSCSI01_StartIP
@@ -16,6 +20,7 @@ $iSCSI02_Net="192.168.101."
 $iSCSI02_StartIP=101
 $private:iSCSI02_StartIP
 $iSCSI_NetMask="255.255.255.0"
+$vMotion_vLAN = 1009
 $iSCSI01_vLAN = 1010
 $iSCSI02_vLAN = 1010
 
@@ -31,6 +36,7 @@ Connect-VIServer vcentre.localdomain.local -User $VIUser -Password $VIPassword
 foreach ($vmhost in $VMHosts) {
     $iSCSI01_IP=$iSCSI01_Net+$iSCSI01_StartIP
     $iSCSI02_IP=$iSCSI02_Net+$iSCSI02_StartIP
+    $vMotion_IP=$vMotion_Net+$vMotion_StartIP
     
     # 安装主机许可
     Set-VMHost -VMHost $vmhost -LicenseKey $License -Confirm:$False
@@ -56,8 +62,9 @@ foreach ($vmhost in $VMHosts) {
     # 新建业务使用的标准交换机,开启 Jumbo Frame
     New-VirtualSwitch -Name vSwitch1 -Nic vmnic4,vmnic5 -Mtu 9000 -Confirm:$false
 
-    # 新建 vMotion 网络
-    New-VMHostNetworkAdapter -PortGroup vMotion -VirtualSwitch vSwitch0
+    # 新建并启用vMotion 网络
+    New-VMHostNetworkAdapter -PortGroup vMotion -VirtualSwitch vSwitch0 -IP $vMotion_IP -SubnetMask $vMotion_NetMask -vlanid $vMotion_vLAN -Mtu 9000 
+    $vMotion_StartIP += 1
     Get-VMHostNetworkAdapter -Name vmk1  |Set-VMHostNetworkAdapter -VMotionEnabled $true
     
     # 批量创建存储使用的网络端口组
